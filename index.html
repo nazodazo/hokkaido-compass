@@ -23,7 +23,7 @@ main{max-width:calc(var(--u)*140);margin:0 auto;display:flex;flex-direction:colu
 .hero>.lbl{color:color-mix(in srgb,var(--ground) 75%,transparent);border-color:color-mix(in srgb,var(--ground) 35%,transparent);background:color-mix(in srgb,var(--ground) 8%,transparent)}
 .hero .k{color:color-mix(in srgb,var(--ground) 65%,transparent)}
 svg{display:block;width:100%;max-width:calc(var(--u)*80);height:auto;overflow:visible}
-svg g{transition:transform .25s linear;transform-box:view-box;transform-origin:0 0}
+svg g{transform-box:view-box;transform-origin:0 0}
 .big{font-weight:500;font-size:calc(var(--u)*15);line-height:calc(var(--u)*15);white-space:nowrap}
 .head{font-weight:600;font-size:calc(var(--u)*8);line-height:calc(var(--u)*9)}
 .nest{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--u)*4)}
@@ -91,17 +91,21 @@ function draw(){
   if(sel==null&&ok)sel=rows.reduce((m,r)=>r.d<m.d?r:m).i;
   const S=rows[sel??0];
   $("tn").textContent=ok||sel!=null?S.n:"Tap start";
-  if(ok){$("td").textContent=km(S.d);$("tb").textContent=`bearing ${Math.round(S.b)}° ${Q(S.b)}`;
-    spin("n",$("needle"),S.b-(head??0));spin("r",$("ring"),-(head??0));}
+  if(ok){$("td").textContent=km(S.d);$("tb").textContent=`bearing ${Math.round(S.b)}° ${Q(S.b)}`;}
   $("list").innerHTML=rows.map(r=>`<button class="row${r.i==sel?" on":""}" data-i=${r.i}>${arrow}<div><b>${r.n}</b></div><div><small>${r.b==null?"":Math.round(r.b)+"° "+Q(r.b)}</small>${r.d==null?"–":km(r.d)}</div></button>`).join("");
-  document.querySelectorAll(".row").forEach(e=>{if(ok)spin("a"+e.dataset.i,e.querySelector(".nd"),rows[e.dataset.i].b-(head??0));
-    else e.querySelector(".nd").style.transform="rotate(0)"});
+  cur=ok?rows:null;nds=[...document.querySelectorAll(".nd")];turn();
 }
+// per-frame work only: rotate existing elements, no DOM rebuild. Heading is low-pass filtered (shortest-arc) to kill magnetometer jitter.
+let cur=null,nds=[],raw=null,sm=null,busy=false;
+function turn(){busy=false;if(!cur)return;
+  if(raw!=null){sm=sm==null?raw:(sm+(((raw-sm)%360+540)%360-180)*.25+360)%360;head=sm}
+  const h=head??0;spin("n",$("needle"),cur[sel].b-h);spin("r",$("ring"),-h);nds.forEach((e,i)=>spin("a"+i,e,cur[i].b-h))}
+const onHead=h=>{raw=h;if(!busy){busy=true;requestAnimationFrame(turn)}};
 $("list").onclick=e=>{const r=e.target.closest(".row");if(r){sel=+r.dataset.i;draw()}};
 $("go").onclick=async()=>{
   if(DeviceOrientationEvent.requestPermission)await DeviceOrientationEvent.requestPermission(); // iOS needs the tap
-  addEventListener("deviceorientationabsolute",e=>{if(e.alpha!=null){head=(360-e.alpha)%360;draw()}});
-  addEventListener("deviceorientation",e=>{if(e.webkitCompassHeading!=null){head=e.webkitCompassHeading;draw()}});
+  addEventListener("deviceorientationabsolute",e=>{if(e.alpha!=null){onHead((360-e.alpha)%360)}});
+  addEventListener("deviceorientation",e=>{if(e.webkitCompassHeading!=null){onHead(e.webkitCompassHeading)}});
   navigator.geolocation.watchPosition(p=>{pos=p;draw()},e=>{$("st").className="k state bad";$("st").textContent="GPS error: "+e.message},{enableHighAccuracy:true,maximumAge:0});
   setInterval(()=>pos&&draw(),5000);  // keep "age" ticking
   $("go").remove();
