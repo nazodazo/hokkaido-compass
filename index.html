@@ -1,0 +1,110 @@
+<!doctype html><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name=theme-color content="#0b0c0d">
+<title>Hokkaido compass</title>
+<style>
+@font-face{font-family:Inter;font-weight:400;src:url(fonts/Inter-Regular.ttf)}
+@font-face{font-family:Inter;font-weight:600;src:url(fonts/Inter-SemiBold.ttf)}
+@font-face{font-family:Num;font-weight:500;src:url(fonts/ChivoMono-Medium.ttf);unicode-range:U+0030-0039}
+/* look borrowed from cradle-fund deck: nested_tile / thread_bento / stress. Everything is n x 3px (grid-3). */
+:root{--accent:#f5c400;--ink:#e8e6e1;--ground:#0b0c0d;--panel:#131416;--line:#2a2c2f;--muted:#9a9a95;
+  --u:3px;--m:calc(var(--u)*2);--pill-h:calc(var(--u)*8);--edge:calc(var(--m)*2 + var(--pill-h));
+  --radius:15px;--r-in:calc(var(--radius) - var(--u));--gap:calc(var(--u)*5);
+  --sans:'Num','Inter',Arial,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;padding:calc(var(--u)*6);padding-bottom:calc(var(--u)*30);background:var(--ground);color:var(--ink);
+  font:400 calc(var(--u)*6)/calc(var(--u)*8) var(--sans);-webkit-text-size-adjust:100%}
+main{max-width:calc(var(--u)*140);margin:0 auto;display:flex;flex-direction:column;gap:var(--gap)}
+.tile{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:var(--edge);display:flex;flex-direction:column;gap:calc(var(--u)*4);overflow:hidden}
+.tile>.lbl{position:absolute;top:var(--m);left:50%;transform:translateX(-50%);height:var(--pill-h);display:flex;align-items:center;padding:0 calc(var(--u)*5);white-space:nowrap;
+  border:1px solid var(--line);border-radius:var(--r-in);background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.lbl,.k{font-size:calc(var(--u)*4);line-height:calc(var(--u)*5);color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.hero{background:var(--accent);border-color:var(--accent);color:var(--ground);align-items:center;text-align:center}
+.hero>.lbl{color:color-mix(in srgb,var(--ground) 75%,transparent);border-color:color-mix(in srgb,var(--ground) 35%,transparent);background:color-mix(in srgb,var(--ground) 8%,transparent)}
+.hero .k{color:color-mix(in srgb,var(--ground) 65%,transparent)}
+svg{display:block;width:100%;max-width:calc(var(--u)*80);height:auto;overflow:visible}
+svg g{transition:transform .25s linear;transform-box:view-box;transform-origin:0 0}
+.big{font-weight:500;font-size:calc(var(--u)*15);line-height:calc(var(--u)*15);white-space:nowrap}
+.head{font-weight:600;font-size:calc(var(--u)*8);line-height:calc(var(--u)*9)}
+.nest{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--u)*4)}
+.sub{display:flex;flex-direction:column;gap:calc(var(--u)*2);padding:calc(var(--u)*4) calc(var(--u)*5);border-radius:var(--r-in);border:1px solid var(--line);background:color-mix(in srgb,var(--ink) 4%,transparent)}
+.sub b{font-weight:500;font-size:calc(var(--u)*8);line-height:calc(var(--u)*9)}
+.state{color:var(--muted)}.state.ok{color:var(--accent)}.state.bad{color:#ff6b6b}
+.list{display:flex;flex-direction:column;gap:calc(var(--u)*4)}
+.row{display:grid;grid-template-columns:calc(var(--u)*14) 1fr auto;align-items:center;gap:calc(var(--u)*4);padding:calc(var(--u)*4) calc(var(--u)*5);
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r-in);cursor:pointer;font:inherit;color:inherit;text-align:left;width:100%}
+.row.on{border-color:var(--accent)}
+.row svg{max-width:calc(var(--u)*14)}
+.row small{display:block;color:var(--muted);font-size:calc(var(--u)*4);line-height:calc(var(--u)*5);text-transform:uppercase;letter-spacing:.08em}
+.go{position:fixed;left:50%;bottom:calc(var(--u)*8);transform:translateX(-50%);height:calc(var(--u)*16);padding:0 calc(var(--u)*10);border-radius:calc(var(--u)*8);
+  background:var(--accent);color:var(--ground);border:0;font:600 calc(var(--u)*5)/1 var(--sans);text-transform:uppercase;letter-spacing:.08em;cursor:pointer;white-space:nowrap}
+</style>
+<main>
+  <section class="tile hero">
+    <div class="lbl" id=hl>Heading to</div>
+    <svg viewBox="-100 -100 200 200" id=cmp>
+      <circle r=96 fill=none stroke=currentColor stroke-opacity=.35 stroke-width=2 />
+      <g id=ring></g>
+      <g id=needle><polygon points="0,-76 13,12 0,3 -13,12" fill=currentColor /></g>
+      <circle r=4 fill=#f5c400 />
+    </svg>
+    <div class=head id=tn>Tap start</div>
+    <div class=big id=td>–</div>
+    <div class=k id=tb>bearing –</div>
+  </section>
+
+  <section class="tile">
+    <div class="lbl">GPS fix</div>
+    <div class=nest>
+      <div class=sub><span class=k>Lat</span><b id=la>–</b></div>
+      <div class=sub><span class=k>Lon</span><b id=lo>–</b></div>
+      <div class=sub><span class=k>Accuracy</span><b id=ac>–</b></div>
+      <div class=sub><span class=k>Age</span><b id=ag>–</b></div>
+    </div>
+    <div class="k state" id=st>no fix</div>
+  </section>
+
+  <section class="list" id=list></section>
+</main>
+<button class=go id=go>Start GPS + compass</button>
+<script>
+// ponytail: hardcoded base towns (approx); replace with geocoded trip.db built from the xlsx
+const P=[["Tokyo",35.6812,139.7671],["Kushiro",42.9849,144.3814],["Lake Akan",43.4333,144.0970],["Utoro",44.0707,144.9930],["Abashiri",44.0206,144.2733]];
+const $=id=>document.getElementById(id),R=d=>d*Math.PI/180,D=r=>r*180/Math.PI;
+const hav=(a,b,c,d)=>12742*Math.asin(Math.sqrt(Math.sin(R(c-a)/2)**2+Math.cos(R(a))*Math.cos(R(c))*Math.sin(R(d-b)/2)**2));
+const brg=(a,b,c,d)=>(D(Math.atan2(Math.sin(R(d-b))*Math.cos(R(c)),Math.cos(R(a))*Math.sin(R(c))-Math.sin(R(a))*Math.cos(R(c))*Math.cos(R(d-b))))+360)%360;
+const Q=b=>["N","E","S","W"][Math.round(b/90)%4];
+const km=k=>k<1?Math.round(k*1000)+" m":k.toFixed(k<100?1:0)+" km";
+const arrow='<svg viewBox="-100 -100 200 200"><g class=nd><polygon points="0,-84 26,40 0,16 -26,40" fill=currentColor /></g></svg>';
+// ring ticks + N/E/S/W, built once
+$("ring").innerHTML=[...Array(12)].map((_,i)=>{const a=i*30,c=i%3==0;return`<line y1=-96 y2=${c?-80:-88} stroke=currentColor stroke-width=${c?3:2} stroke-opacity=${c?.9:.45} transform=rotate(${a}) />`}).join("")
+  +["N","E","S","W"].map((t,i)=>`<text transform="rotate(${i*90}) translate(0,-62)" text-anchor=middle dominant-baseline=middle font-size=18 font-weight=600 fill=currentColor><tspan>${t}</tspan></text>`).join("");
+let pos=null,head=null,sel=null,started=false;
+const acc={};  // unwrapped angle per element so a 359->1 turn doesn't spin the long way
+function spin(id,el,deg){const p=acc[id]??deg;let d=((deg-p)%360+540)%360-180;acc[id]=p+d;el.style.transform=`rotate(${acc[id]}deg)`}
+function draw(){
+  const lat=pos?.coords.latitude,lon=pos?.coords.longitude,ok=!!pos;
+  if(ok){$("la").textContent=lat.toFixed(4);$("lo").textContent=lon.toFixed(4);$("ac").textContent="±"+Math.round(pos.coords.accuracy)+" m";
+    const age=Math.round((Date.now()-pos.timestamp)/1000);$("ag").textContent=age+" s";
+    const s=$("st");s.className="k state "+(age>30?"bad":pos.coords.accuracy<30?"ok":"");s.textContent=age>30?"stale – last known fix":pos.coords.accuracy<30?"lock":"weak – move to open sky";}
+  const rows=P.map(([n,a,b],i)=>({n,i,d:ok?hav(lat,lon,a,b):null,b:ok?brg(lat,lon,a,b):null}));
+  if(sel==null&&ok)sel=rows.reduce((m,r)=>r.d<m.d?r:m).i;
+  const S=rows[sel??0];
+  $("tn").textContent=ok||sel!=null?S.n:"Tap start";
+  if(ok){$("td").textContent=km(S.d);$("tb").textContent=`bearing ${Math.round(S.b)}° ${Q(S.b)}`;
+    spin("n",$("needle"),S.b-(head??0));spin("r",$("ring"),-(head??0));}
+  $("list").innerHTML=rows.map(r=>`<button class="row${r.i==sel?" on":""}" data-i=${r.i}>${arrow}<div><b>${r.n}</b></div><div><small>${r.b==null?"":Math.round(r.b)+"° "+Q(r.b)}</small>${r.d==null?"–":km(r.d)}</div></button>`).join("");
+  document.querySelectorAll(".row").forEach(e=>{if(ok)spin("a"+e.dataset.i,e.querySelector(".nd"),rows[e.dataset.i].b-(head??0));
+    else e.querySelector(".nd").style.transform="rotate(0)"});
+}
+$("list").onclick=e=>{const r=e.target.closest(".row");if(r){sel=+r.dataset.i;draw()}};
+$("go").onclick=async()=>{
+  if(DeviceOrientationEvent.requestPermission)await DeviceOrientationEvent.requestPermission(); // iOS needs the tap
+  addEventListener("deviceorientationabsolute",e=>{if(e.alpha!=null){head=(360-e.alpha)%360;draw()}});
+  addEventListener("deviceorientation",e=>{if(e.webkitCompassHeading!=null){head=e.webkitCompassHeading;draw()}});
+  navigator.geolocation.watchPosition(p=>{pos=p;draw()},e=>{$("st").className="k state bad";$("st").textContent="GPS error: "+e.message},{enableHighAccuracy:true,maximumAge:0});
+  setInterval(()=>pos&&draw(),5000);  // keep "age" ticking
+  $("go").remove();
+};
+draw();
+</script>
